@@ -114,8 +114,6 @@ Compensation amounts vary depending on the severity and long-term impact of the 
 - **Serious injuries** (permanent disability, brain injury): £20,000 - £100,000+
 - **Severe, life-changing injuries**: £100,000 - several million pounds
 
-Compensation covers both the pain and suffering caused and any financial losses, including medical expenses, care costs, and loss of future earnings if the injury affects the child's career prospects.
-
 ### What Are The Most Common Causes Of Child Injury Claims?
 
 Our experience shows that child injury claims typically arise from:
@@ -146,8 +144,6 @@ For children, special time limits apply:
 - After age 18, the young person has 3 years to claim themselves
 - For serious injuries where the child lacks mental capacity, no time limit applies
 
-However, it's always best to start the process as soon as possible while evidence is fresh.
-
 ### Evidence Required for a Child Injury Claim
 
 To build a strong case, we'll help you gather:
@@ -166,8 +162,6 @@ Timelines vary depending on complexity:
 - **Simple claims**: 4-9 months
 - **Moderate claims requiring investigation**: 9-18 months
 - **Complex claims (severe injuries)**: 18 months - 3 years
-
-We keep you informed throughout and work to conclude your claim as efficiently as possible while ensuring the best outcome.
 
 ### Claims Involving Uninsured or Unknown Parties
 
@@ -194,8 +188,6 @@ Compensation for child injuries in [LOCATION] depends on the severity and long-t
 - **Moderate injuries** (requiring ongoing treatment): £5,000 - £20,000
 - **Serious injuries** (permanent disability): £20,000 - £100,000+
 - **Severe, life-changing injuries**: £100,000 - several million
-
-We'll help you claim for pain, suffering, medical expenses, care costs, and any impact on future earnings.
 
 ### Common Causes of Child Injuries in [LOCATION]
 
@@ -986,28 +978,86 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 # ============================================================================
-# NETLIFY CONFIGURATION
+# NETLIFY CONFIGURATION (FIXED VERSION)
 # ============================================================================
 
-NETLIFY_TOML = """
-[build]
+NETLIFY_TOML = """[build]
   command = "python build.py"
   publish = "output"
 
 [build.environment]
   PYTHON_VERSION = "3.9"
 
+# Redirect all requests to index.html for client-side routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
+# Ensure proper 404 handling
+[[redirects]]
+  from = "/404"
+  to = "/404.html"
+  status = 404
+
+# Headers for security and caching
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
+    Cache-Control = "public, max-age=3600"
+
+# Cache static assets longer
+[[headers]]
+  for = "/near-me/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+"""
+
+# ============================================================================
+# 404 PAGE
+# ============================================================================
+
+ERROR_404_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found | Child Injury Claims UK</title>
+    <style>
+        {{ css_content|safe }}
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <h1>Child Injury Claims UK</h1>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="content-section" style="text-align: center; padding: 4rem 2rem;">
+            <h1>404 - Page Not Found</h1>
+            <p style="font-size: 1.2rem; margin: 2rem 0;">Sorry, the page you're looking for doesn't exist or has been moved.</p>
+            <a href="/" class="button button-large">Return to Homepage</a>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-bottom">
+                <p>&copy; 2024 Child Injury Claims UK. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
 """
 
 # ============================================================================
@@ -1051,11 +1101,6 @@ class SiteGenerator:
         return []
     
     def generate_homepage(self):
-        env = Environment()
-        env.get_template = lambda name: Template(globals()[f"{name.upper().replace('.', '_')}_TEMPLATE"])
-        
-        template = env.get_template('base.html')
-        
         # Render homepage
         homepage_html = Template(INDEX_TEMPLATE).render(
             site_name=self.config['site_name'],
@@ -1072,6 +1117,16 @@ class SiteGenerator:
         with open(output_path, 'w') as f:
             f.write(homepage_html)
         print("✓ Generated homepage")
+    
+    def generate_404_page(self):
+        """Generate a custom 404 page"""
+        html = Template(ERROR_404_PAGE).render(
+            css_content=CSS_STYLES
+        )
+        output_path = os.path.join(self.output_dir, '404.html')
+        with open(output_path, 'w') as f:
+            f.write(html)
+        print("✓ Generated 404 page")
     
     def generate_location_pages(self):
         for county, towns in self.locations_by_county.items():
@@ -1167,12 +1222,13 @@ class SiteGenerator:
         
         self.clean_output_dir()
         self.generate_homepage()
+        self.generate_404_page()
         self.generate_location_pages()
         self.generate_sitemap()
         self.generate_robots()
         self.generate_netlify_toml()
         
-        total_pages = sum(len(towns) for towns in self.locations_by_county.values()) + len(self.locations_by_county) + 1
+        total_pages = sum(len(towns) for towns in self.locations_by_county.values()) + len(self.locations_by_county) + 2
         print("=" * 50)
         print(f"✅ Build complete! Generated {total_pages} pages")
         print(f"📁 Output directory: {self.output_dir}")
